@@ -34,8 +34,8 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 
 const app = express();
 
-// Trust the first proxy (Render's load balancer) so req.ip reads X-Forwarded-For
-app.set('trust proxy', 1);
+// Trust all proxies (Render load balancers) so req.ip reads the client IP
+app.set('trust proxy', true);
 
 // ─── Rate Limiter (only for /click) ───────────────────────────────────────────
 
@@ -85,7 +85,8 @@ app.get('/click', clickLimiter, async (req, res) => {
 
   try {
     // 1. Extract IP (held in memory only, never stored)
-    const ip = req.ip;
+    const forwarded = req.get('x-forwarded-for') || '';
+    const ip = forwarded ? forwarded.split(',')[0].trim() : req.ip;
 
     // 2. Geo-lookup (IP → location, then IP is discarded)
     const geo = await geoLookup(ip);
